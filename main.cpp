@@ -2,7 +2,7 @@
 #include <igl/viewer/Viewer.h>
 #include <igl/per_face_normals.h>
 #include <iostream>
-//#include "tutorial_shared_path.h"
+#include <vector>
 #include "set.h"
 #include "constraints.h"
 
@@ -32,17 +32,20 @@ int main(int argc, char *argv[])
     int faceNum = F.rows();
     
     //initialize the set class
-    void* rawMemory = operator new(total*sizeof(set));
-    set *components = reinterpret_cast<set*>(rawMemory);
+    void* rawMemory = operator new(total*sizeof(set<int>));
+    void* rawMemory1 = operator new(3*total*sizeof(set<vector<int>>));
+    set<int>* components = reinterpret_cast<set<int>*>(rawMemory);
+    set<vector<int>>* edges = reinterpret_cast<set<vector<int>>*>(rawMemory1);
     for(int i = 0;i < total;i++){
-        new (&components[i])set(faceNum);
+        new (&components[i])set<int>(faceNum);
+        new (&edges[i])set<vector<int>>(faceNum);
     }
     
-    //compute the components class, the components are not connected yet
-    heightField(N_faces, d, components, total);
-//    for(int i = 0;i < total;i++)
-//        components[i].display();
     
+    //compute the components class, the components are not connected yet
+//    heightField(N_faces, d, components, edges, F, total);
+    
+   
     
     
     // Plot the mesh
@@ -58,5 +61,9 @@ int main(int argc, char *argv[])
     for(int i = 0;i < total;i++){
         components[i].~set();
     }
+    for(int i = 0;i < total;i++){
+        edges[i].~set();
+    }
     operator delete(rawMemory);
+    operator delete(rawMemory1);
 }
