@@ -12,27 +12,31 @@
 
 using namespace std;
 
+template<typename T>
 class set{
 private:
-    int *item;
+    T *item;
     long number;
     long ntotal;
 public:
     set(long total){
         this->number = 0;
         ntotal = total;
-        item = new int[total];
+        item = new T[total];
         memset(this->item,0,sizeof(item));
     }
-    int isExist(const int item);
-    bool addItem(const int item);
-    bool removeItem(const int item);
+    int isExist(const T item);
+    bool addItem(const T item);
+    bool removeItem(const T item);
     set operator+ (set set2);
     set operator* (set set2);
     void display();
+    int scale();
+    T visitItem(int index);
 };
 
-int set::isExist(const int item){
+template<typename T>
+int set<T>::isExist(const T item){
     for(int i = 0;i < number;i++){
         if(this->item[i] == item)
             return i;
@@ -40,17 +44,23 @@ int set::isExist(const int item){
     return -1;
 }
 
-bool set::addItem(const int item){
-    if(isExist(item)>=0 || this->number>=ntotal-1)
+template<typename T>
+bool set<T>::addItem(const T item){
+    if(isExist(item)>=0 || this->number>=ntotal-1){
+        cerr<<"the adding itme is out of boundary";
         return false;
+    }
     this->item[this->number++] = item;
     return true;
 }
 
-bool set::removeItem(const int item){
+template<typename T>
+bool set<T>::removeItem(const T item){
     int pos = isExist(item);
-    if(pos<0)
+    if(pos<0){
+        cerr<<"the itme is not found";
         return false;
+    }
     this->number--;
     for(int i = pos;i < this->number;i++){
         this->item[i] = this->item[i+1];
@@ -58,8 +68,9 @@ bool set::removeItem(const int item){
     return true;
 }
 
-set set::operator+ (set set2){  //union
-    set result(2*this->ntotal);
+template<typename T>
+set<T> set<T>::operator+ (set<T> set2){  //union
+    set<T> result(2*this->ntotal);
     for(int i = 0;i < this->number;i++){
         result.addItem(this->item[i]);
     }
@@ -70,8 +81,9 @@ set set::operator+ (set set2){  //union
     return result;
 }
 
-set set::operator* (set set2){  //intersection
-    set result(this->ntotal);
+template<typename T>
+set<T> set<T>::operator* (set<T> set2){  //intersection
+    set<T> result(this->ntotal);
     for(int i = 0;i < this->number;i++){
         if(set2.isExist(this->item[i]) >= 0){
             result.addItem(this->item[i]);
@@ -80,11 +92,24 @@ set set::operator* (set set2){  //intersection
     return result;
 }
 
-void set::display(){
+template<typename T>
+void set<T>::display(){
     for(int i = 0;i < this->number;i++){
         cout<<this->item[i]<<" ";
     }
     cout<<"\n"<<endl;
+}
+
+template<typename T>
+int set<T>::scale(){
+    return number;
+}
+
+template<typename T>
+T set<T>::visitItem(int index){
+    if(index<0 || index >= this->number)
+        cerr<<"the visiting index is out of boundary";
+    else return this->item[index];
 }
 
 #endif /* set_h */
