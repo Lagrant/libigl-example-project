@@ -25,6 +25,9 @@ public:
         item = new T[total];
         memset(this->item,0,sizeof(item));
     }
+    ~set(){
+        delete[] item;
+    }
     int isExist(const T item);
     bool addItem(const T item);
     bool removeItem(const T item);
@@ -33,6 +36,7 @@ public:
     void display();
     int scale();
     T visitItem(int index);
+    bool isEmpty();
 };
 
 template<typename T>
@@ -58,7 +62,7 @@ template<typename T>
 bool set<T>::removeItem(const T item){
     int pos = isExist(item);
     if(pos<0){
-        cerr<<"the itme is not found";
+        cout<<"the itme is not found";
         return false;
     }
     this->number--;
@@ -107,9 +111,16 @@ int set<T>::scale(){
 
 template<typename T>
 T set<T>::visitItem(int index){
-    if(index<0 || index >= this->number)
+    if(index<0 || index >= this->number){
         cerr<<"the visiting index is out of boundary";
+        return 0;
+    }
     else return this->item[index];
+}
+
+template<typename T>
+bool set<T>::isEmpty(){
+    return (this->number <= 0) ? true : false;
 }
 
 #endif /* set_h */
