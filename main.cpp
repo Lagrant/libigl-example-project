@@ -8,8 +8,8 @@
 
 Eigen::MatrixXd V;
 Eigen::MatrixXi F;
-
 Eigen::MatrixXd N_faces;
+
 using namespace std;
 
 int main(int argc, char *argv[])
@@ -32,18 +32,21 @@ int main(int argc, char *argv[])
     int faceNum = F.rows();
     
     //initialize the set class
-    void* rawMemory = operator new(total*sizeof(set<int>));
-    void* rawMemory1 = operator new(3*total*sizeof(set<vector<int>>));
+    void* rawMemory = operator new(faceNum*sizeof(set<int>));
+    void* rawMemory1 = operator new(faceNum*sizeof(set<vector<int>>));
+    void* rawMemory2 = operator new(faceNum*sizeof(set<vector<int>>));
     set<int>* components = reinterpret_cast<set<int>*>(rawMemory);
     set<vector<int>>* edges = reinterpret_cast<set<vector<int>>*>(rawMemory1);
-    for(int i = 0;i < total;i++){
-        new (&components[i])set<int>(faceNum);
-        new (&edges[i])set<vector<int>>(faceNum);
+    set<vector<int>>* seams = reinterpret_cast<set<vector<int>>*>(rawMemory2);
+    for(int i = 0;i < faceNum;i++){
+        new (&components[i])set<int>(faceNum); //NfaceRows = faceNum, NfaceRows means the total numebr of norms of faces while faceNum means the total  number of faces
+        new (&edges[i])set<vector<int>>(3*faceNum);
+        new (&seams[i])set<vector<int>>(3*faceNum);
     }
     
     
     //compute the components class, the components are not connected yet
-//    heightField(N_faces, d, components, edges, F, total);
+    heightField(N_faces, d, components, edges, seams, F, total);
     
    
     
@@ -58,12 +61,13 @@ int main(int argc, char *argv[])
     
     viewer.launch();
     
-    for(int i = 0;i < total;i++){
+    for(int i = 0;i < faceNum;i++){
         components[i].~set();
-    }
-    for(int i = 0;i < total;i++){
         edges[i].~set();
+        seams[i].~set();
     }
     operator delete(rawMemory);
     operator delete(rawMemory1);
+    operator delete(rawMemory2);
+    return 0;
 }
