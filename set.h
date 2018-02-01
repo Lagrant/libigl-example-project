@@ -9,7 +9,7 @@
 #ifndef set_h
 #define set_h
 #include <iostream>
-
+//#define MAX 2147483647
 using namespace std;
 
 template<typename T>
@@ -23,11 +23,11 @@ public:
         this->number = 0;
         ntotal = total;
         item = new T[total];
-        memset(this->item,0,sizeof(item));
+        memset(this->item, -1, sizeof(T)*ntotal);
     }
-    ~set(){
+    /*~set(){
         delete[] item;
-    }
+    }*/
     int isExist(const T item);
     bool addItem(const T item);
     bool removeItem(const T item);
@@ -37,11 +37,12 @@ public:
     int scale();
     T visitItem(int index);
     bool isEmpty();
+    T end();
 };
 
 template<typename T>
 int set<T>::isExist(const T item){
-    for(int i = 0;i < number;i++){
+    for(int i = 0;i < this->number;i++){
         if(this->item[i] == item)
             return i;
     }
@@ -113,7 +114,8 @@ template<typename T>
 T set<T>::visitItem(int index){
     if(index<0 || index >= this->number){
         cerr<<"the visiting index is out of boundary";
-        return 0;
+        exit(-1);
+//        return -1;
     }
     else return this->item[index];
 }
@@ -123,4 +125,8 @@ bool set<T>::isEmpty(){
     return (this->number <= 0) ? true : false;
 }
 
+template<typename T>
+T set<T>::end(){
+    return this->item[this->number-1];
+}
 #endif /* set_h */
