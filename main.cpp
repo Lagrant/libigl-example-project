@@ -25,15 +25,9 @@ int main(int argc, char *argv[])
 {
     int total;
 //    cin>>total;
-    total = 60;
+    total = 120;
     d = new Eigen::Vector3d[total];
 
-//    d[0]<<0,0,1;
-//    d[1]<<0,1,0;
-//    d[2]<<1,0,0;
-//    d[3]<<0,0,-1;
-//    d[4]<<0,-1,0;
-//    d[5]<<-1,0,0;
     for(int i = 0;i < total;i++){
         d[i](0) = Guass();
         d[i](1) = Guass();
@@ -75,13 +69,6 @@ int main(int argc, char *argv[])
     }
     printf("face number = %d\n", faceNum);
 
-
-//    color[0]<<0,0,1;
-//    color[1]<<0,1,0;
-//    color[2]<<1,0,0;
-//    color[3]<<0,1,1;
-//    color[4]<<1,0,1;
-//    color[5]<<1,1,0;
     for(int i = 0;i < total;i++){
         color[i](0) = (double) rand() / RAND_MAX;
         color[i](1) = (double) rand() / RAND_MAX;
@@ -95,11 +82,16 @@ int main(int argc, char *argv[])
     
     GeneralGraph_DArraySArraySpatVarying(faceNum,total);
     
-    getHalfEdge(V.rows(), faceNum, result, &ver, &e, &triFace);
+//    getHalfEdge(V.rows(), faceNum, result, &ver, &e, &triFace);
     
-    build(&ver, totalVer);
+//    build(&ver, totalVer);
     
-    integrate(&triFace, result, faceNum);
+//    integrate(&triFace, result, faceNum);
+    
+//    integrate(&triFace, result, faceNum);
+    
+//    integrate(&triFace, result, faceNum);
+    
     
     for(int i = 0 ;i < faceNum;i++){
 //        C.row(i) = color[labels[i].visitItem(0)];
@@ -114,7 +106,6 @@ int main(int argc, char *argv[])
     viewer.data.set_mesh(V, F);
     viewer.data.set_normals(N_faces);
     viewer.data.set_colors(C);
-    
     
     viewer.launch();
     

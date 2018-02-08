@@ -320,10 +320,11 @@ void integrate(face** triFace, int* result, int faceNum) {
         getNeighborLabels(dLabel, &(*triFace)[i]);
         
         int dl = compare(dLabel);
-        if(dl != -1 && dl != result[i]){
-            std::cout<<"before result["<<i<<"] = "<<result[i]<<"\t";
+        if(dl != -1 && dl != result[i] /*&& N_faces.row(i)*d[dl] >= 0*/){
+//            std::cout<<"before result["<<i<<"] = "<<result[i]<<"\t";
             result[i] = dl;
-            std::cout<<"after result["<<i<<"] = "<<result[i]<<"\n";
+            (*triFace)[i].label = dl;
+//            std::cout<<"after result["<<i<<"] = "<<result[i]<<"\n";
         }
     }
 }

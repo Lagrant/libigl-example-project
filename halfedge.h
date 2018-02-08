@@ -13,9 +13,9 @@
 struct edge;
 
 struct vertex {
-    int x;
-    int y;
-    int z;
+    double x;
+    double y;
+    double z;
     
     edge* startEdge;
 };
