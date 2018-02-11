@@ -234,7 +234,7 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
             int li = seekTheSameLabel(i, j, ignore);
             
             if(li == -1){
-                
+                //select a random initial label to be the seed. Traverse the adjacent faces. If the same label is found, set the label on the adjacent face. Traverse and seek the same label if the label is set, or set a random inital label and then seek the same label for each face on the front of the queue, .
                 
                 double value = match(F.row(i),F.row(j));
                 gc->setNeighbors(i,j,value);

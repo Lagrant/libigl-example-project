@@ -52,7 +52,7 @@ int set<T>::isExist(const T item){
 template<typename T>
 bool set<T>::addItem(const T item){
     if(isExist(item)>=0 || this->number>=ntotal-1){
-        cerr<<"the adding itme is out of boundary";
+        cerr<<"the adding item is out of boundary";
         return false;
     }
     this->item[this->number++] = item;
@@ -63,7 +63,7 @@ template<typename T>
 bool set<T>::removeItem(const T item){
     int pos = isExist(item);
     if(pos<0){
-        cout<<"the itme is not found";
+        cout<<"the item is not found";
         return false;
     }
     this->number--;
