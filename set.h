@@ -115,7 +115,6 @@ T set<T>::visitItem(int index){
     if(index<0 || index >= this->number){
         cerr<<"the visiting index is out of boundary";
         exit(-1);
-//        return -1;
     }
     else return this->item[index];
 }
