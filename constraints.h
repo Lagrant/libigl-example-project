@@ -132,34 +132,6 @@ double match(int k[], int l[], int total){
     return temp1.norm();
 }
 
-//void heightField(Eigen::MatrixXd N_faces, Eigen::Vector3d* d, set<int>* components, set<vector<int>>* edges, set<vector<int>>* seams, Eigen::MatrixXi F, int total){
-//    int NfaceRows = N_faces.rows();
-//    int* cover = new int[NfaceRows];
-//    memset(cover,1,sizeof(cover));
-//    for(int j = 0;j < total;j++){
-//        for(int i = 0;i < NfaceRows;i++){
-//            if(N_faces.row(i).dot(d[j])>=0 && cover[i]){
-//                cover[i] = 0;
-//                components[j].addItem(i);
-//                Eigen::Matrix<int,1,3> e = F.row(i);
-//                int q[] = {e(0),e(1),e(2)};
-//                sort(q,3);
-//                vector<int> k(3);
-//                k.at(0) = q[0]; k.at(1) = q[1]; k.at(2) = i;
-//                edges[j].addItem(k);
-//                appendSeams(seams, j, k);
-//                k.at(0) = q[0]; k.at(1) = q[2]; k.at(2) = i;
-//                edges[j].addItem(k);
-//                appendSeams(seams, j, k);
-//                k.at(0) = q[1]; k.at(1) = q[2]; k.at(2) = i;
-//                edges[j].addItem(k);
-//                appendSeams(seams, j, k);
-//            }
-//        }
-//    }
-//    delete[] cover;
-//}
-
 int heightField(const int total){
     int NfaceRows = N_faces.rows(), end = 0;
     int *mark = (int*) malloc(sizeof(int)*NfaceRows);
@@ -173,6 +145,7 @@ int heightField(const int total){
             if(N_faces.row(i)*d[j] >= 0){
                 mark[i] = 1;
                 ccp[end].direction = d[j];
+                components[j].addItem(end);
                 queue<face*> q;
                 face* f;
                 q.push(&triFace[i]);
@@ -181,20 +154,23 @@ int heightField(const int total){
                     q.pop();
                     ccp[end].conFaces.push_back(f->numbering);
                     mark[f->numbering] = 1;
-                    components[j].addItem(f->numbering);
                     labels[f->numbering].addItem(j);
+                    
                     edge* e = f->adjacentEdge;
                     f = e->pair->face;
                     if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
                         q.push(f);
+                    
                     e = e->next;
                     f = e->pair->face;
                     if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
                         q.push(f);
+                    
                     e = e->next;
                     f = e->pair->face;
                     if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
                         q.push(f);
+                    
                 } while(!q.empty());
                 end++;
             }
@@ -204,13 +180,13 @@ int heightField(const int total){
     return end;
 }
 
-bool overlap(Eigen::Matrix3d P, Eigen::Vector3d d, set<int> components, int label){
+bool overlap(Eigen::Matrix3d P, Eigen::Vector3d d, connectedComponents L, int label){
     
     int l0 = F(label,0), l1 = F(label,1), l2 = F(label,2);
     Eigen::Matrix<double,1,3> v0 = V.row(l0), v1 = V.row(l1), v2 = V.row(l2);
-    int total = components.scale();
+    int total = L.conFaces.size();
     for(int j = 0;j < total;j++){
-        int item = components.visitItem(j);
+        int item = L.conFaces.at(j);
         int k0 = F(item,0), k1 = F(item,1), k2 = F(item,2);
         Eigen::Matrix<double,1,3> w0 = V.row(k0), w1 = V.row(k1), w2 = V.row(k2);
         //cout<<"direction  = ("<<d.row(0)<<", "<<d.row(1)<<", "<<d.row(2)<<")\n";
