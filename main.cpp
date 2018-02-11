@@ -18,13 +18,16 @@ set<int>* components;
 set<vector<int>>* edges;
 set<int>* labels;
 int* result;
+vertex* ver;
+edge* e;
+face* triFace;
+connectedComponents* ccp;
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
     int total;
-//    cin>>total;
     total = 120;
     d = new Eigen::Vector3d[total];
 
@@ -36,7 +39,7 @@ int main(int argc, char *argv[])
     }
     
     // Load a mesh in OFF format
-    igl::readOFF( "/Users/Lagrant/libigl/tutorial/shared/bearing.off", V, F);
+    igl::readOFF( "/Users/Lagrant/libigl/tutorial/shared/bunny1.off", V, F);
     
     // Compute per-face normals
     igl::per_face_normals(V,F,N_faces);
@@ -45,9 +48,10 @@ int main(int argc, char *argv[])
     
     // To apply the halfedge data structure
     int totalVer = faceNum*3;
-    vertex* ver = (vertex*) malloc(sizeof(vertex)*totalVer);
-    edge* e = (edge*) malloc(sizeof(edge)*totalVer);
-    face* triFace = (face*) malloc(sizeof(face)*faceNum);
+    ver = (vertex*) malloc(sizeof(vertex)*totalVer);
+    e = (edge*) malloc(sizeof(edge)*totalVer);
+    triFace = (face*) malloc(sizeof(face)*faceNum);
+    ccp = (connectedComponents*) malloc(sizeof(connectedComponents)*faceNum);
     
     Eigen::RowVector3d* color = new Eigen::RowVector3d[total];
     result = (int*) malloc(sizeof(int)*faceNum);
@@ -81,7 +85,7 @@ int main(int argc, char *argv[])
     heightField(total);
     
     GeneralGraph_DArraySArraySpatVarying(faceNum,total);
-    
+        
 //    getHalfEdge(V.rows(), faceNum, result, &ver, &e, &triFace);
     
 //    build(&ver, totalVer);
@@ -124,6 +128,7 @@ int main(int argc, char *argv[])
     free(ver);
     free(e);
     free(triFace);
+    free(ccp);
     
     return 0;
 }

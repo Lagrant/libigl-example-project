@@ -20,6 +20,11 @@
 #define Random(x) rand()%x
 #define MAX 1000
 
+typedef struct {
+    Eigen::Vector3d direction;
+    vector<int> conFaces;
+} connectedComponents;
+
 extern Eigen::MatrixXd V;
 extern Eigen::MatrixXi F;
 extern Eigen::MatrixXd N_faces;
@@ -28,6 +33,8 @@ extern set<int>* components;
 extern set<vector<int>>* edges;
 extern set<int>* labels;
 extern int* result;
+extern face* triFace;
+extern connectedComponents* ccp;
 
 double Guass(){
     double u;
@@ -67,17 +74,8 @@ bool interEmpty(Eigen::Matrix3d P, Eigen::Matrix<double,1,3> j0, Eigen::Matrix<d
     k1T = P*k1T;
     Eigen::Matrix<double,3,1> vec1 = j0T-j1T, vec2 = k0T-k1T, vec3 = k0T-j0T, vec4 = k1T-j0T;
     
-//    //cout<<"vec1 = ("<<vec1.row(0)<<", "<<vec1.row(1)<<", "<<vec1.row(2)<<")\n";
-//    //cout<<"vec2 = ("<<vec2.row(0)<<", "<<vec2.row(1)<<", "<<vec2.row(2)<<")\n";
-//    //cout<<"vec3 = ("<<vec3.row(0)<<", "<<vec3.row(1)<<", "<<vec3.row(2)<<")\n";
-//    //cout<<"vec4 = ("<<vec4.row(0)<<", "<<vec4.row(1)<<", "<<vec4.row(2)<<")\n";
     vec1.normalize(); vec2.normalize(); vec3.normalize(); vec4.normalize();
     if(vec1 == vec2){
-        //cout<<"overlap vec = ("<<vec1.row(0)<<", "<<vec1.row(1)<<", "<<vec1.row(2)<<")\n";
-        //cout<<"j0 vec = ("<<j0.col(0)<<", "<<j0.col(1)<<", "<<j0.col(2)<<")\n";
-        //cout<<"j1 vec = ("<<j1.col(0)<<", "<<j1.col(1)<<", "<<j1.col(2)<<")\n";
-        //cout<<"k0 vec = ("<<k0.col(0)<<", "<<k0.col(1)<<", "<<k0.col(2)<<")\n";
-        //cout<<"k1 vec = ("<<k1.col(0)<<", "<<k1.col(1)<<", "<<k1.col(2)<<")\n";
         return true;
     }
     Eigen::Matrix3d space;
@@ -134,45 +132,76 @@ double match(int k[], int l[], int total){
     return temp1.norm();
 }
 
-void heightField(Eigen::MatrixXd N_faces, Eigen::Vector3d* d, set<int>* components, set<vector<int>>* edges, set<vector<int>>* seams, Eigen::MatrixXi F, int total){
-    int NfaceRows = N_faces.rows();
-    int* cover = new int[NfaceRows];
-    memset(cover,1,sizeof(cover));
-    for(int j = 0;j < total;j++){
-        for(int i = 0;i < NfaceRows;i++){
-            if(N_faces.row(i).dot(d[j])>=0 && cover[i]){
-                cover[i] = 0;
-                components[j].addItem(i);
-                Eigen::Matrix<int,1,3> e = F.row(i);
-                int q[] = {e(0),e(1),e(2)};
-                sort(q,3);
-                vector<int> k(3);
-                k.at(0) = q[0]; k.at(1) = q[1]; k.at(2) = i;
-                edges[j].addItem(k);
-                appendSeams(seams, j, k);
-                k.at(0) = q[0]; k.at(1) = q[2]; k.at(2) = i;
-                edges[j].addItem(k);
-                appendSeams(seams, j, k);
-                k.at(0) = q[1]; k.at(1) = q[2]; k.at(2) = i;
-                edges[j].addItem(k);
-                appendSeams(seams, j, k);
-            }
-        }
-    }
-    delete[] cover;
-}
+//void heightField(Eigen::MatrixXd N_faces, Eigen::Vector3d* d, set<int>* components, set<vector<int>>* edges, set<vector<int>>* seams, Eigen::MatrixXi F, int total){
+//    int NfaceRows = N_faces.rows();
+//    int* cover = new int[NfaceRows];
+//    memset(cover,1,sizeof(cover));
+//    for(int j = 0;j < total;j++){
+//        for(int i = 0;i < NfaceRows;i++){
+//            if(N_faces.row(i).dot(d[j])>=0 && cover[i]){
+//                cover[i] = 0;
+//                components[j].addItem(i);
+//                Eigen::Matrix<int,1,3> e = F.row(i);
+//                int q[] = {e(0),e(1),e(2)};
+//                sort(q,3);
+//                vector<int> k(3);
+//                k.at(0) = q[0]; k.at(1) = q[1]; k.at(2) = i;
+//                edges[j].addItem(k);
+//                appendSeams(seams, j, k);
+//                k.at(0) = q[0]; k.at(1) = q[2]; k.at(2) = i;
+//                edges[j].addItem(k);
+//                appendSeams(seams, j, k);
+//                k.at(0) = q[1]; k.at(1) = q[2]; k.at(2) = i;
+//                edges[j].addItem(k);
+//                appendSeams(seams, j, k);
+//            }
+//        }
+//    }
+//    delete[] cover;
+//}
 
-void heightField(const int total){
-    int NfaceRows = N_faces.rows();
-    printf("NfaceRows = %d\n", NfaceRows);
+int heightField(const int total){
+    int NfaceRows = N_faces.rows(), end = 0;
+    int *mark = (int*) malloc(sizeof(int)*NfaceRows);
+    
     for(int j = 0;j < total;j++){
+        memset(mark,0,sizeof(int)*NfaceRows);
+
         for(int i = 0;i < NfaceRows;i++){
+            if(mark[i])
+                continue;
             if(N_faces.row(i)*d[j] >= 0){
-                components[j].addItem(i);
-                labels[i].addItem(j);
+                mark[i] = 1;
+                ccp[end].direction = d[j];
+                queue<face*> q;
+                face* f;
+                q.push(&triFace[i]);
+                do{
+                    f = q.front();
+                    q.pop();
+                    ccp[end].conFaces.push_back(f->numbering);
+                    mark[f->numbering] = 1;
+                    components[j].addItem(f->numbering);
+                    labels[f->numbering].addItem(j);
+                    edge* e = f->adjacentEdge;
+                    f = e->pair->face;
+                    if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
+                        q.push(f);
+                    e = e->next;
+                    f = e->pair->face;
+                    if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
+                        q.push(f);
+                    e = e->next;
+                    f = e->pair->face;
+                    if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
+                        q.push(f);
+                } while(!q.empty());
+                end++;
             }
         }
     }
+    free(mark);
+    return end;
 }
 
 bool overlap(Eigen::Matrix3d P, Eigen::Vector3d d, set<int> components, int label){
@@ -213,8 +242,9 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
     
     // next set up the array for smooth costs
     for ( int l1 = 0; l1 < num_labels; l1++ )
-        for (int l2 = 0; l2 < num_labels; l2++ )
-            smooth[l1+l2*num_labels] = 1;
+        for (int l2 = 0; l2 < num_labels; l2++ ){
+            (l1 == l2)? smooth[l1+l2*num_labels] = 0: smooth[l1+l2*num_labels] = 1;
+        }
     
     try{
         GCoptimizationGeneralGraph *gc = new GCoptimizationGeneralGraph(num_pixels,num_labels);
