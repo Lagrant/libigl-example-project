@@ -89,43 +89,31 @@ bool interEmpty(Eigen::Matrix3d P, Eigen::Matrix<double,1,3> j0, Eigen::Matrix<d
     return invertible ? true : false;
  }
 
-void appendSeams(set<vector<int>>* seams, const int pos,vector<int> k){
-    int scale = seams[pos].scale();
-    for(int i = 0;i < scale;i++){
-        vector<int> item = seams[pos].visitItem(i);
-        if(k.at(0)==item.at(0) && k.at(1)==item.at(1)){
-            seams[pos].removeItem(k);
-            return;
+int seekTheSameLabel(int f1, int f2, int ignore){
+    int scale1 = labels[f1].scale();
+    int scale2 = labels[f2].scale();
+    int count = 0;
+    
+    for(int i = 0; i < scale1; i++){
+        for(int j = 0; j < scale2; j++){
+            if(labels[f1].visitItem(i) == labels[f2].visitItem(j) && count++ >= ignore)
+                return labels[f1].visitItem(i);
         }
     }
-    seams[pos].addItem(k);
+    return -1;
 }
 
-void removeSeams(Eigen::Matrix<int,1,3> e, set<vector<int>>* seams, const int current, const int pos, const int faceIndex){
-    int q[] = {e(0),e(1),e(2)};
-    sort(q,3);
-    vector<int> k(3);
-    k.at(0) = q[0]; k.at(1) = q[1]; k.at(2) = faceIndex;
-    appendSeams(seams, current, k);
-    appendSeams(seams, pos, k);
-    k.at(0) = q[0]; k.at(1) = q[2]; k.at(2) = faceIndex;
-    appendSeams(seams, current, k);
-    appendSeams(seams, pos, k);
-    k.at(0) = q[1]; k.at(1) = q[2]; k.at(2) = faceIndex;
-    appendSeams(seams, current, k);
-    appendSeams(seams, pos, k);
-}
-
-double match(int k[], int l[], int total){
+double match(Eigen::Vector3i k, Eigen::Vector3i l){
     int c[3] = {-1,-1,-1}, cur = 0;
-    for(int i = 0;i < total;i++){
-        for(int j = 0;j < total;j++){
-            if(k[i] == l[j])
-                c[cur++] = k[i];
+    for(int i = 0;i < 3;i++){
+        for(int j = 0;j < 3;j++){
+            if(k(i) == l(j))
+                c[cur++] = k(i);
         }
     }
     if(c[1] == -1)
         return -1;
+    
     Eigen::Matrix<double,3,1> temp1 = V.row(c[0]);
     Eigen::Matrix<double,3,1> temp2 = V.row(c[1]);
     temp1 -= temp2;
@@ -146,9 +134,12 @@ int heightField(const int total){
                 mark[i] = 1;
                 ccp[end].direction = d[j];
                 components[j].addItem(end);
+                
                 queue<face*> q;
                 face* f;
+                edge* e;
                 q.push(&triFace[i]);
+                
                 do{
                     f = q.front();
                     q.pop();
@@ -156,7 +147,7 @@ int heightField(const int total){
                     mark[f->numbering] = 1;
                     labels[f->numbering].addItem(j);
                     
-                    edge* e = f->adjacentEdge;
+                    e = f->adjacentEdge;
                     f = e->pair->face;
                     if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
                         q.push(f);
@@ -180,7 +171,7 @@ int heightField(const int total){
     return end;
 }
 
-bool overlap(Eigen::Matrix3d P, Eigen::Vector3d d, connectedComponents L, int label){
+bool overlap(Eigen::Matrix3d P, connectedComponents L, int label){
     
     int l0 = F(label,0), l1 = F(label,1), l2 = F(label,2);
     Eigen::Matrix<double,1,3> v0 = V.row(l0), v1 = V.row(l1), v2 = V.row(l2);
@@ -189,7 +180,7 @@ bool overlap(Eigen::Matrix3d P, Eigen::Vector3d d, connectedComponents L, int la
         int item = L.conFaces.at(j);
         int k0 = F(item,0), k1 = F(item,1), k2 = F(item,2);
         Eigen::Matrix<double,1,3> w0 = V.row(k0), w1 = V.row(k1), w2 = V.row(k2);
-        //cout<<"direction  = ("<<d.row(0)<<", "<<d.row(1)<<", "<<d.row(2)<<")\n";
+
         if(!interEmpty(P,v2,v1,w0,w2))
             return false;
         if(!interEmpty(P,v0,v1,w0,w1) || !interEmpty(P,v0,v1,w0,w2) || !interEmpty(P,v0,v1,w2,w1) || !interEmpty(P,v0,v2,w0,w1) || !interEmpty(P,v0,v2,w0,w2) || !interEmpty(P,v0,v2,w2,w1) || !interEmpty(P,v2,v1,w0,w1) || !interEmpty(P,v2,v1,w2,w1))
@@ -227,6 +218,32 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
         gc->setDataCost(data);
         gc->setSmoothCost(smooth);
         
+        int* mark = (int*) malloc(sizeof(int)*num_pixels);
+        memset(mark,0,sizeof(int)*num_pixels);
+        face* f, *adjF;
+        edge* e;
+        queue<face*> q;
+        q.push(&triFace[0]);
+        
+        do {
+            f = q.front();
+            q.pop();
+            e = f->adjacentEdge;
+            adjF = e->pair->face;
+            int ignore = 0, i = f->numbering, j = adjF->numbering;
+            int li = seekTheSameLabel(i, j, ignore);
+            
+            if(li == -1){
+                
+                
+                double value = match(F.row(i),F.row(j));
+                gc->setNeighbors(i,j,value);
+            } else {
+                
+            }
+            
+        } while(!q.empty());
+        
         for(int i = 0;i < num_pixels;i++){
             int scale = labels[i].scale();
             int li = labels[i].visitItem(Random(scale));
@@ -251,17 +268,12 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
                     gc->setNeighbors(i,j,MAX);
                     gc->setNeighbors(j,i,MAX);
                 }
-                else if(overlap(P0,d[li],components[li],li) || overlap(P,d[lj],components[lj],lj)){
+                else if(overlap(P0,components[li],li) || overlap(P,components[lj],lj)){
                     gc->setNeighbors(i,j,MAX);
                     gc->setNeighbors(j,i,MAX);
                 }
                 else{
-                    int p[3],q[3];
-                    for(int i = 0;i < 3;i++){
-                        p[i] = F(li,i);
-                        q[i] = F(lj,i);
-                    }
-                    double value = match(p,q,3);
+                    double value = match(F.row(li),F.row(lj));
                     if(value < 0){
                         gc->setNeighbors(i,j,0);
                         gc->setNeighbors(j,i,0);
@@ -281,6 +293,7 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
         for ( int  i = 0; i < num_pixels; i++ )
             result[i] = gc->whatLabel(i);
         
+        free(mark);
         delete gc;
     } catch (GCException e){
         e.Report();

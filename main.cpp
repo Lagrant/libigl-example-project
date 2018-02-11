@@ -55,20 +55,20 @@ int main(int argc, char *argv[])
     
     Eigen::RowVector3d* color = new Eigen::RowVector3d[total];
     result = (int*) malloc(sizeof(int)*faceNum);
+    memset(result, -1, sizeof(int)*faceNum);
     
     //initialize the set class
     void* rawMemory = operator new(faceNum*sizeof(set<int>));
     void* rawMemory1 = operator new(faceNum*sizeof(set<vector<int>>));
-//    void* rawMemory2 = operator new(faceNum*sizeof(set<vector<int>>));
     void* rawMemory3 = operator new(NfaceRows*sizeof(set<int>));
+    
     components = reinterpret_cast<set<int>*>(rawMemory);
     edges = reinterpret_cast<set<vector<int>>*>(rawMemory1);
-//    set<vector<int>>* seams = reinterpret_cast<set<vector<int>>*>(rawMemory2);
     labels = reinterpret_cast<set<int>*>(rawMemory3);
+    
     for(int i = 0;i < faceNum;i++){
         new (&components[i])set<int>(faceNum); //NfaceRows = faceNum, NfaceRows means the total numebr of norms of faces while faceNum means the total  number of faces
         new (&edges[i])set<vector<int>>(3*faceNum);
-//        new (&seams[i])set<vector<int>>(3*faceNum);
         new (&labels[i])set<int>(faceNum);
     }
     printf("face number = %d\n", faceNum);
@@ -116,7 +116,6 @@ int main(int argc, char *argv[])
     for(int i = 0;i < faceNum;i++){
         components[i].~set();
         edges[i].~set();
-//        seams[i].~set();
         labels[i].~set();
     }
     operator delete(rawMemory);
