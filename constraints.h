@@ -87,20 +87,15 @@ bool interEmpty(Eigen::Matrix3d P, Eigen::Matrix<double,1,3> j0, Eigen::Matrix<d
     double determinat;
     space.computeInverseAndDetWithCheck(inverseSpace,determinat,invertible);
     return invertible ? true : false;
- }
+}
 
-int seekTheSameLabel(int f1, int f2, int ignore){
-    int scale1 = labels[f1].scale();
-    int scale2 = labels[f2].scale();
-    int count = 0;
-    
-    for(int i = 0; i < scale1; i++){
-        for(int j = 0; j < scale2; j++){
-            if(labels[f1].visitItem(i) == labels[f2].visitItem(j) && count++ >= ignore)
-                return labels[f1].visitItem(i);
-        }
+int seekTheSameLabel(int label, int face){
+    int scale = labels[face].scale();
+    for(int i = 0; i < scale; i++){
+        if(labels[face].visitItem(i) == label)
+            return 1;
     }
-    return -1;
+    return 0;
 }
 
 double match(Eigen::Vector3i k, Eigen::Vector3i l){
@@ -126,7 +121,7 @@ int heightField(const int total){
     
     for(int j = 0;j < total;j++){
         memset(mark,0,sizeof(int)*NfaceRows);
-
+        
         for(int i = 0;i < NfaceRows;i++){
             if(mark[i])
                 continue;
@@ -180,19 +175,19 @@ bool overlap(Eigen::Matrix3d P, connectedComponents L, int label){
         int item = L.conFaces.at(j);
         int k0 = F(item,0), k1 = F(item,1), k2 = F(item,2);
         Eigen::Matrix<double,1,3> w0 = V.row(k0), w1 = V.row(k1), w2 = V.row(k2);
-
+        
         if(!interEmpty(P,v2,v1,w0,w2))
             return false;
         if(!interEmpty(P,v0,v1,w0,w1) || !interEmpty(P,v0,v1,w0,w2) || !interEmpty(P,v0,v1,w2,w1) || !interEmpty(P,v0,v2,w0,w1) || !interEmpty(P,v0,v2,w0,w2) || !interEmpty(P,v0,v2,w2,w1) || !interEmpty(P,v2,v1,w0,w1) || !interEmpty(P,v2,v1,w2,w1))
             return true;
-       
+        
     }
     return false;
 }
 
 void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
 {
-//    int *result = new int[num_pixels];   // stores result of optimization
+    //    int *result = new int[num_pixels];   // stores result of optimization
     
     // first set up the array for data costs
     int *data = (int*) malloc(sizeof(int)*num_pixels*num_labels);
@@ -224,67 +219,94 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
         edge* e;
         queue<face*> q;
         q.push(&triFace[0]);
+        mark[0] = 1;
+        result[0] = labels[0].visitItem(Random(labels[0].scale()));
         
         do {
             f = q.front();
             q.pop();
             e = f->adjacentEdge;
-            adjF = e->pair->face;
-            int ignore = 0, i = f->numbering, j = adjF->numbering;
-            int li = seekTheSameLabel(i, j, ignore);
+            int i = f->numbering, j, li;
+            edge *eRun = e;
+            if(result[i] == -1)
+                result[i] = labels[i].visitItem(Random(labels[i].scale()));
             
-            if(li == -1){
-                //select a random initial label to be the seed. Traverse the adjacent faces. If the same label is found, set the label on the adjacent face. Traverse and seek the same label if the label is set, or set a random inital label and then seek the same label for each face on the front of the queue, .
+            //select a random initial label to be the seed. Traverse the adjacent faces. If the same label is found, set the label on the adjacent face. Traverse and seek the same label if the label is set, or set a random inital label and then seek the same label for each face on the front of the queue. Remove overlap, consider seam conflicts only.
+            do {
+                adjF = eRun->pair->face;
+                j = adjF->numbering;
+
+                if(!mark[j]){
+                    mark[j] = 1;
+                    q.push(&triFace[j]);
+                }
                 
-                double value = match(F.row(i),F.row(j));
-                gc->setNeighbors(i,j,value);
-            } else {
+                if(result[j] == -1){
+                    li = seekTheSameLabel(result[i], j);
+                    
+                    if(!li){
+                        
+                        double value = match(F.row(i),F.row(j));
+                        gc->setNeighbors(i,j,value);
+                    } else {
+                        result[j] = result[i];
+                        gc->setNeighbors(i,j,0);
+                    }
+                } else if(result[i] == result[j])
+                    gc->setNeighbors(i,j,0);
+                else {
+                    double value = match(F.row(i),F.row(j));
+                    gc->setNeighbors(i,j,value);
+                }
                 
-            }
+                eRun = eRun->next;
+                
+            }while(eRun != e);
+            
             
         } while(!q.empty());
         
-        for(int i = 0;i < num_pixels;i++){
-            int scale = labels[i].scale();
-            int li = labels[i].visitItem(Random(scale));
-            Eigen::Matrix<double,1,3> dT = d[li].transpose();
-            Eigen::Matrix3d I = Eigen::Matrix3d::Identity();  //the unit matrix
-            Eigen::Matrix3d P0 = I - d[li]*dT;
-            
-            gc->setNeighbors(i,i,0);
-            for(int j = i+1;j < num_pixels;j++){
-                int scale = labels[j].scale();
-                int lj = labels[j].visitItem(Random(scale));   //fix a bug that changing label[k] to label[j]
-                Eigen::Matrix<double,1,3> dT = d[lj].transpose();
-                Eigen::Matrix3d I = Eigen::Matrix3d::Identity();  //the unit matrix
-                Eigen::Matrix3d P = I - d[lj]*dT;
-                
-                if(li == lj){
-                    //cout<<"label = "<<li<<"\n";
-                    gc->setNeighbors(i,j,0);
-                    gc->setNeighbors(j,i,0);
-                }
-                else if(N_faces.row(i)*d[li]<0 || N_faces.row(j)*d[lj]<0){
-                    gc->setNeighbors(i,j,MAX);
-                    gc->setNeighbors(j,i,MAX);
-                }
-                else if(overlap(P0,components[li],li) || overlap(P,components[lj],lj)){
-                    gc->setNeighbors(i,j,MAX);
-                    gc->setNeighbors(j,i,MAX);
-                }
-                else{
-                    double value = match(F.row(li),F.row(lj));
-                    if(value < 0){
-                        gc->setNeighbors(i,j,0);
-                        gc->setNeighbors(j,i,0);
-                    }
-                    else{
-                        gc->setNeighbors(i,j,value);
-                        gc->setNeighbors(j,i,value);
-                    }
-                }
-            }
-        }
+        //        for(int i = 0;i < num_pixels;i++){
+        //            int scale = labels[i].scale();
+        //            int li = labels[i].visitItem(Random(scale));
+        //            Eigen::Matrix<double,1,3> dT = d[li].transpose();
+        //            Eigen::Matrix3d I = Eigen::Matrix3d::Identity();  //the unit matrix
+        //            Eigen::Matrix3d P0 = I - d[li]*dT;
+        //
+        //            gc->setNeighbors(i,i,0);
+        //            for(int j = i+1;j < num_pixels;j++){
+        //                int scale = labels[j].scale();
+        //                int lj = labels[j].visitItem(Random(scale));   //fix a bug that changing label[k] to label[j]
+        //                Eigen::Matrix<double,1,3> dT = d[lj].transpose();
+        //                Eigen::Matrix3d I = Eigen::Matrix3d::Identity();  //the unit matrix
+        //                Eigen::Matrix3d P = I - d[lj]*dT;
+        //
+        //                if(li == lj){
+        //                    //cout<<"label = "<<li<<"\n";
+        //                    gc->setNeighbors(i,j,0);
+        //                    gc->setNeighbors(j,i,0);
+        //                }
+        //                else if(N_faces.row(i)*d[li]<0 || N_faces.row(j)*d[lj]<0){
+        //                    gc->setNeighbors(i,j,MAX);
+        //                    gc->setNeighbors(j,i,MAX);
+        //                }
+        //                else if(overlap(P0,components[li],li) || overlap(P,components[lj],lj)){
+        //                    gc->setNeighbors(i,j,MAX);
+        //                    gc->setNeighbors(j,i,MAX);
+        //                }
+        //                else{
+        //                    double value = match(F.row(li),F.row(lj));
+        //                    if(value < 0){
+        //                        gc->setNeighbors(i,j,0);
+        //                        gc->setNeighbors(j,i,0);
+        //                    }
+        //                    else{
+        //                        gc->setNeighbors(i,j,value);
+        //                        gc->setNeighbors(j,i,value);
+        //                    }
+        //                }
+        //            }
+        //        }
         
         printf("\nBefore optimization energy is %lld",gc->compute_energy());
         gc->expansion();// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
@@ -299,7 +321,7 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
         e.Report();
     }
     
-//    delete [] result;
+    //    delete [] result;
     free(data);
     free(smooth);
     
@@ -329,8 +351,8 @@ inline int compare(int dLabel[]){
 }
 
 void integrate(face** triFace, int* result, int faceNum) {
-//    std::queue<face*> q;
-//    q.push((*triFace));
+    //    std::queue<face*> q;
+    //    q.push((*triFace));
     for(int i = 0; i < faceNum; i++){
         
         int dLabel[3];
@@ -340,10 +362,10 @@ void integrate(face** triFace, int* result, int faceNum) {
         
         int dl = compare(dLabel);
         if(dl != -1 && dl != result[i] /*&& N_faces.row(i)*d[dl] >= 0*/){
-//            std::cout<<"before result["<<i<<"] = "<<result[i]<<"\t";
+            //            std::cout<<"before result["<<i<<"] = "<<result[i]<<"\t";
             result[i] = dl;
             (*triFace)[i].label = dl;
-//            std::cout<<"after result["<<i<<"] = "<<result[i]<<"\n";
+            //            std::cout<<"after result["<<i<<"] = "<<result[i]<<"\n";
         }
     }
 }
@@ -352,30 +374,30 @@ void integrate(face** triFace, int* result, int faceNum) {
  for every direction d and the components related to d, calculate the interlock individually.
  */
 /*void interlock(Eigen::MatrixXd V, Eigen::MatrixXi F, Eigen::MatrixXd N_faces, const Eigen::Vector3d d, set<vector<int>>* edges, set<int>* components, set<vector<int>>* seams, int total, int& pos, const int current){
-    for(int i = 0;i < total;i++){
-        vector<int> sEdges = seams[current].visitItem(i);
-        int s = sEdges.at(2);
-        Eigen::Matrix<double,1,3> v1 = V.row(sEdges.at(0)),
-        v2 = V.row(sEdges.at(1)),
-        v0 = v1-v2,
-        n = N_faces.row(s),
-        nt = n.cross(v0);
-        
-        nt.normalize();
-        if(nt*d >= 0)
-            continue;
-        
-        components[current].removeItem(s);
-        components[pos].addItem(s);
-        edges[current].removeItem(sEdges);
-        edges[pos].addItem(sEdges);
-        
-        Eigen::Matrix<int,1,3> e = F.row(s);
-        removeSeams(e, seams, current, pos, s);
-    }
-    if(!components[pos].isEmpty())
-       pos++;
-}*/
+ for(int i = 0;i < total;i++){
+ vector<int> sEdges = seams[current].visitItem(i);
+ int s = sEdges.at(2);
+ Eigen::Matrix<double,1,3> v1 = V.row(sEdges.at(0)),
+ v2 = V.row(sEdges.at(1)),
+ v0 = v1-v2,
+ n = N_faces.row(s),
+ nt = n.cross(v0);
+ 
+ nt.normalize();
+ if(nt*d >= 0)
+ continue;
+ 
+ components[current].removeItem(s);
+ components[pos].addItem(s);
+ edges[current].removeItem(sEdges);
+ edges[pos].addItem(sEdges);
+ 
+ Eigen::Matrix<int,1,3> e = F.row(s);
+ removeSeams(e, seams, current, pos, s);
+ }
+ if(!components[pos].isEmpty())
+ pos++;
+ }*/
 /*
  calculate the value total in the later coding
  construct an array to store the directions
