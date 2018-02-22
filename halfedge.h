@@ -13,9 +13,7 @@
 struct edge;
 
 struct vertex {
-    double x;
-    double y;
-    double z;
+    Eigen::Matrix<double,3,1> vert;
     
     edge* startEdge;
 };
@@ -32,11 +30,8 @@ struct edge {
     edge* next;
     face* face;
 };
-bool equal(vertex* vi, vertex* vj);
 
-void assignEdge(vertex** ver, int end, edge** e, int i);
-
-void getHalfEdge(int verNum, int faceNum, int* result, vertex** ver,  edge** e, face** triFace);
+void getHalfEdge(int verNum, int faceNum, vertex** ver,  edge** e, face** triFace);
 
 void build(vertex** ver, int totalVer);
 

@@ -29,8 +29,8 @@ extern Eigen::MatrixXd V;
 extern Eigen::MatrixXi F;
 extern Eigen::MatrixXd N_faces;
 extern Eigen::Vector3d* d;
-extern set<int>* components;
-extern set<vector<int>>* edges;
+//extern set<int>* components;
+//extern set<vector<int>>* edges;
 extern set<int>* labels;
 extern int* result;
 extern face* triFace;
@@ -50,18 +50,6 @@ double Guass(){
     return u * c;
 }
 
-void sort(int* q,int len){
-    int temp;
-    for(int i = 0;i < len;i++){
-        for(int j = i+1;j < len;j++){
-            if(q[i] < q[j]){
-                temp = q[i];
-                q[i] = q[j];
-                q[j] = temp;
-            }
-        }
-    }
-}
 
 bool interEmpty(Eigen::Matrix3d P, Eigen::Matrix<double,1,3> j0, Eigen::Matrix<double,1,3> j1, Eigen::Matrix<double,1,3> k0, Eigen::Matrix<double,1,3> k1){
     Eigen::Matrix<double,3,1> j0T = j0.transpose();
@@ -89,83 +77,6 @@ bool interEmpty(Eigen::Matrix3d P, Eigen::Matrix<double,1,3> j0, Eigen::Matrix<d
     return invertible ? true : false;
 }
 
-int seekTheSameLabel(int label, int face){
-    int scale = labels[face].scale();
-    for(int i = 0; i < scale; i++){
-        if(labels[face].visitItem(i) == label)
-            return 1;
-    }
-    return 0;
-}
-
-double match(Eigen::Vector3i k, Eigen::Vector3i l){
-    int c[3] = {-1,-1,-1}, cur = 0;
-    for(int i = 0;i < 3;i++){
-        for(int j = 0;j < 3;j++){
-            if(k(i) == l(j))
-                c[cur++] = k(i);
-        }
-    }
-    if(c[1] == -1)
-        return -1;
-    
-    Eigen::Matrix<double,3,1> temp1 = V.row(c[0]);
-    Eigen::Matrix<double,3,1> temp2 = V.row(c[1]);
-    temp1 -= temp2;
-    return temp1.norm();
-}
-
-int heightField(const int total){
-    int NfaceRows = N_faces.rows(), end = 0;
-    int *mark = (int*) malloc(sizeof(int)*NfaceRows);
-    
-    for(int j = 0;j < total;j++){
-        memset(mark,0,sizeof(int)*NfaceRows);
-        
-        for(int i = 0;i < NfaceRows;i++){
-            if(mark[i])
-                continue;
-            if(N_faces.row(i)*d[j] >= 0){
-                mark[i] = 1;
-                ccp[end].direction = d[j];
-                components[j].addItem(end);
-                
-                queue<face*> q;
-                face* f;
-                edge* e;
-                q.push(&triFace[i]);
-                
-                do{
-                    f = q.front();
-                    q.pop();
-                    ccp[end].conFaces.push_back(f->numbering);
-                    mark[f->numbering] = 1;
-                    labels[f->numbering].addItem(j);
-                    
-                    e = f->adjacentEdge;
-                    f = e->pair->face;
-                    if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
-                        q.push(f);
-                    
-                    e = e->next;
-                    f = e->pair->face;
-                    if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
-                        q.push(f);
-                    
-                    e = e->next;
-                    f = e->pair->face;
-                    if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering])
-                        q.push(f);
-                    
-                } while(!q.empty());
-                end++;
-            }
-        }
-    }
-    free(mark);
-    return end;
-}
-
 bool overlap(Eigen::Matrix3d P, connectedComponents L, int label){
     
     int l0 = F(label,0), l1 = F(label,1), l2 = F(label,2);
@@ -183,6 +94,98 @@ bool overlap(Eigen::Matrix3d P, connectedComponents L, int label){
         
     }
     return false;
+}
+
+int seekTheSameLabel(int label, int face){
+    int scale = labels[face].scale();
+    for(int i = 0; i < scale; i++){
+        if(labels[face].visitItem(i) == label)
+            return 1;
+    }
+    return 0;
+}
+
+//Eigen::Matrix<double,3,1> match(Eigen::Vector3i k, Eigen::Vector3i l){
+//    int c[3] = {-1,-1,-1}, cur = 0;
+//    for(int i = 0;i < 3;i++){
+//        for(int j = 0;j < 3;j++){
+//            if(k(i) == l(j))
+//                c[cur++] = k(i);
+//        }
+//    }
+//    if(c[1] == -1)
+//        return 0;
+//
+//    Eigen::Matrix<double,3,1> temp1 = V.row(c[0]);
+//    Eigen::Matrix<double,3,1> temp2 = V.row(c[1]);
+//    temp1 -= temp2;
+////    return temp1.norm();
+//    return temp1;
+//}
+
+bool interLock(edge* e, Eigen::Vector3d d){
+    int numbering = e->face->numbering;
+    Eigen::Matrix<double,3,1> v = e->endVertex->vert - e->pair->endVertex->vert;
+    Eigen::Matrix<double,1,3> nt = N_faces.row(numbering);
+    nt = nt.cross(v.transpose());
+    nt.normalize();
+    return (nt*d >= 0) ? true : false;
+}
+
+int heightField(const int total){
+    int NfaceRows = N_faces.rows(), end = 0;
+    int *mark = (int*) malloc(sizeof(int)*NfaceRows);
+    
+    for(int j = 0;j < total;j++){
+        memset(mark,0,sizeof(int)*NfaceRows);
+        
+        for(int i = 0; i < NfaceRows; i++){
+            if(mark[i])
+                continue;
+            if(N_faces.row(i)*d[j] >= 0){
+                mark[i] = 1;
+                ccp[end].direction = d[j];
+                //                components[j].addItem(end);
+                
+                queue<face*> q;
+                face* f;
+                edge* e;
+                q.push(&triFace[i]);
+                
+                do{
+                    f = q.front();
+                    q.pop();
+                    ccp[end].conFaces.push_back(f->numbering);
+                    labels[f->numbering].addItem(j);
+                    
+                    e = f->adjacentEdge;
+                    f = e->pair->face;
+                    if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering]){
+                        q.push(f);
+                        mark[f->numbering] = 1;
+                    }
+                    
+                    e = e->next;
+                    f = e->pair->face;
+                    if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering]){
+                        q.push(f);
+                        mark[f->numbering] = 1;
+                    }
+                    
+                    e = e->next;
+                    f = e->pair->face;
+                    if(N_faces.row(f->numbering)*d[j] >= 0 && !mark[f->numbering]){
+                        q.push(f);
+                        mark[f->numbering] = 1;
+                    }
+                    
+                } while(!q.empty());
+                end++;
+            }
+        }
+    }
+    free(mark);
+    return end;
 }
 
 void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
@@ -235,7 +238,7 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
             do {
                 adjF = eRun->pair->face;
                 j = adjF->numbering;
-
+                
                 if(!mark[j]){
                     mark[j] = 1;
                     q.push(&triFace[j]);
@@ -245,24 +248,26 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels)
                     li = seekTheSameLabel(result[i], j);
                     
                     if(!li){
-                        
-                        double value = match(F.row(i),F.row(j));
-                        gc->setNeighbors(i,j,value);
+                        if(interLock(eRun, d[result[i]])){
+                            Eigen::Matrix<double,3,1> value = eRun->endVertex->vert - eRun->pair->endVertex->vert;
+                            gc->setNeighbors(i,j,value.norm());
+                        } else gc->setNeighbors(i, j, MAX);
                     } else {
                         result[j] = result[i];
-                        gc->setNeighbors(i,j,0);
+                        gc->setNeighbors(i, j, 0);
                     }
                 } else if(result[i] == result[j])
-                    gc->setNeighbors(i,j,0);
+                    gc->setNeighbors(i, j, 0);
                 else {
-                    double value = match(F.row(i),F.row(j));
-                    gc->setNeighbors(i,j,value);
+                    if(interLock(eRun, d[result[i]])){
+                        Eigen::Matrix<double,3,1> value = eRun->endVertex->vert - eRun->pair->endVertex->vert;
+                        gc->setNeighbors(i,j,value.norm());
+                    } else gc->setNeighbors(i, j, MAX);
                 }
                 
                 eRun = eRun->next;
                 
-            }while(eRun != e);
-            
+            } while(eRun != e);
             
         } while(!q.empty());
         
@@ -371,7 +376,7 @@ void integrate(face** triFace, int* result, int faceNum) {
 }
 
 /*
- for every direction d and the components related to d, calculate the interlock individually.
+ for every direction d and the components related to d, compute the interlock individually.
  */
 /*void interlock(Eigen::MatrixXd V, Eigen::MatrixXi F, Eigen::MatrixXd N_faces, const Eigen::Vector3d d, set<vector<int>>* edges, set<int>* components, set<vector<int>>* seams, int total, int& pos, const int current){
  for(int i = 0;i < total;i++){
@@ -398,8 +403,4 @@ void integrate(face** triFace, int* result, int faceNum) {
  if(!components[pos].isEmpty())
  pos++;
  }*/
-/*
- calculate the value total in the later coding
- construct an array to store the directions
- */
 #endif /* constraints_h */

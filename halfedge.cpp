@@ -26,7 +26,7 @@ extern int* result;
 
 
 inline bool equal(vertex* vi, vertex* vj){
-    if(vi->x == vj->x && vi->y == vj->y && vi->z == vj->z)
+    if(vi->vert[0] == vj->vert[0] && vi->vert[2] == vj->vert[2] && vi->vert[1] == vj->vert[1])
         return true;
     else return false;
 }
@@ -46,11 +46,10 @@ inline void assignEdge(vertex** ver, int end, edge** e, int i){
     (*ver)[end].startEdge = &(*e)[3*i+2];
 }
 
-void getHalfEdge(int verNum, int faceNum, int* result, vertex** ver, edge** e, face** triFace){
+void getHalfEdge(int verNum, int faceNum, vertex** ver, edge** e, face** triFace){
     int f[3], end = 0;
     for(int i = 0; i < faceNum; i++){
         (*triFace)[i].adjacentEdge = &(*e)[3*i];
-        (*triFace)[i].label = result[i];
         (*triFace)[i].numbering = i;
         (*e)[3*i+1].face = &(*triFace)[i];
         (*e)[3*i+2].face = &(*triFace)[i];
@@ -58,9 +57,10 @@ void getHalfEdge(int verNum, int faceNum, int* result, vertex** ver, edge** e, f
         for(int j = 0; j< 3; j++){
             f[j] = F(i,j);
             assert(f[j] <= verNum);
-            (*ver)[end].x = V(f[j],0);
-            (*ver)[end].y = V(f[j],1);
-            (*ver)[end].z = V(f[j],2);
+//            (*ver)[end].x = V(f[j],0);
+//            (*ver)[end].y = V(f[j],1);
+//            (*ver)[end].z = V(f[j],2);
+            (*ver)[end].vert = V.row(f[j]);
             end++;
         }
         
