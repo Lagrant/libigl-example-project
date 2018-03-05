@@ -9,15 +9,17 @@
 #ifndef set_h
 #define set_h
 #include <iostream>
-//#define MAX 2147483647
+
 using namespace std;
 
 template<typename T>
 class set{
+    
 private:
     T *item;
     long number;
     long ntotal;
+    
 public:
     set(long total){
         this->number = 0;
@@ -53,7 +55,7 @@ template<typename T>
 bool set<T>::addItem(const T item){
     if(isExist(item)>=0 || this->number>=ntotal-1){
         cerr<<"the adding item is out of boundary ";
-        return false;
+        exit(-1);
     }
     this->item[this->number++] = item;
     return true;

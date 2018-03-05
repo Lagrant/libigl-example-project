@@ -1,12 +1,8 @@
 #include <igl/readOFF.h>
 #include <igl/viewer/Viewer.h>
 #include <igl/per_face_normals.h>
-#include <Eigen/LU>
 #include <iostream>
-#include <vector>
-#include "set.h"
-#include "constraints.h"
-#include "halfedge.h"
+#include "constraint.hpp"
 
 #define random(x) (rand()%x)
 
@@ -26,7 +22,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
     int total;
-    total = 60;
+    total = 600;
     d = new Eigen::Vector3d[total];
 
     for(int i = 0;i < total;i++){
@@ -37,7 +33,7 @@ int main(int argc, char *argv[])
     }
     
     // Load a mesh in OFF format
-    igl::readOBJ( "/Users/Lagrant/libigl/tutorial/shared/cube.obj", V, F);
+    igl::readOFF( "/Users/Lagrant/libigl/tutorial/shared/bunny.off", V, F);
     
     // Compute per-face normals
     igl::per_face_normals(V,F,N_faces);
