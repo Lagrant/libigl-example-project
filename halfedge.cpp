@@ -9,7 +9,7 @@
 #include "halfedge.h"
 
 
-void getHalfEdge(int verNum, int faceNum, vertex** ver, edge** e, face** triFace){
+void getHalfEdge(vertex** ver, edge** e, face** triFace){
     int f[3], end = 0;
     for(int i = 0; i < faceNum; i++){
         (*triFace)[i].adjacentEdge = &(*e)[3*i];
@@ -28,7 +28,7 @@ void getHalfEdge(int verNum, int faceNum, vertex** ver, edge** e, face** triFace
 }
 
 void build(vertex** ver, int totalVer) {
-    int* isPaired = (int*)malloc(sizeof(int)*totalVer); // new int[totalVer];
+    int* isPaired = (int*)malloc(sizeof(int)*totalVer);
     memset(isPaired, 0, sizeof(int)*totalVer);
     
     for(int i = 0; i < totalVer; i++){
@@ -49,6 +49,6 @@ void build(vertex** ver, int totalVer) {
         }
         
     }
-    //    delete [] isPaired;
+    
     free(isPaired);
 }

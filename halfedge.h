@@ -40,8 +40,7 @@ extern set<int>* components;
 extern set<vector<int>>* edges;
 extern set<int>* labels;
 extern int* result;
-
-
+extern int faceNum;
 
 inline bool equal(vertex* vi, vertex* vj){
     if(vi->vert[0] == vj->vert[0] && vi->vert[2] == vj->vert[2] && vi->vert[1] == vj->vert[1])
@@ -65,7 +64,7 @@ inline void assignEdge(vertex** ver, int end, edge** e, int i){
 }
 
 
-void getHalfEdge(int verNum, int faceNum, vertex** ver,  edge** e, face** triFace);
+void getHalfEdge(vertex** ver,  edge** e, face** triFace);
 
 void build(vertex** ver, int totalVer);
 

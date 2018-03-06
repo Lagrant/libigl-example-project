@@ -3,6 +3,7 @@
 #include <igl/per_face_normals.h>
 #include <iostream>
 #include "constraint.hpp"
+#include "halfedge.h"
 
 #define random(x) (rand()%x)
 
@@ -16,20 +17,23 @@ vertex* ver;
 edge* e;
 face* triFace;
 connectedComponents* ccp;
+int NfaceRows;
+int faceNum;
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-    int total;
-    total = 600;
+    int total, labelCost;
+    total = 600; labelCost = 0.5*10;
     d = new Eigen::Vector3d[total];
 
-    for(int i = 0;i < total;i++){
+    for(int i = 0;i < total/2;i++){
         d[i](0) = Guass();
         d[i](1) = Guass();
         d[i](2) = Guass();
         d[i].normalize();
+        d[i+total/2] = -d[i];
     }
     
     // Load a mesh in OFF format
@@ -37,8 +41,8 @@ int main(int argc, char *argv[])
     
     // Compute per-face normals
     igl::per_face_normals(V,F,N_faces);
-    int NfaceRows = N_faces.rows();
-    int faceNum = F.rows();
+    NfaceRows = N_faces.rows();
+    faceNum = F.rows();
     
     // To apply the halfedge data structure
     int totalVer = faceNum*3;
@@ -53,13 +57,13 @@ int main(int argc, char *argv[])
     
     //initialize the set class
 
-    void* rawMemory3 = operator new(NfaceRows*sizeof(set<int>));
+    void* rawMemory = operator new(NfaceRows*sizeof(set<int>));
     
-    labels = reinterpret_cast<set<int>*>(rawMemory3);
+    labels = reinterpret_cast<set<int>*>(rawMemory);
     
     for(int i = 0;i < faceNum;i++){
 //NfaceRows = faceNum, NfaceRows means the total numebr of norms of faces while faceNum means the total  number of faces
-        new (&labels[i])set<int>(faceNum);
+        new (&labels[i])set<int>(total);
     }
     printf("face number = %d\n", faceNum);
 
@@ -72,20 +76,20 @@ int main(int argc, char *argv[])
     Eigen::MatrixXd C(faceNum,3);
     
     //compute the components class, the components are not connected yet
-    getHalfEdge(V.rows(), faceNum, &ver, &e, &triFace);
+    getHalfEdge(&ver, &e, &triFace);
     
     build(&ver, totalVer);
     
     heightField(total);
     
-    GeneralGraph_DArraySArraySpatVarying(faceNum,total);
+    GeneralGraph_DArraySArraySpatVarying(faceNum, total, labelCost);
     
     
-//    integrate(&triFace, result, faceNum);
+    integrate();
     
-//    integrate(&triFace, result, faceNum);
+    integrate();
     
-//    integrate(&triFace, result, faceNum);
+//    integrate();
     
     
     for(int i = 0 ;i < faceNum;i++){
@@ -109,7 +113,7 @@ int main(int argc, char *argv[])
         labels[i].~set();
     }
 
-    operator delete(rawMemory3);
+    operator delete(rawMemory);
     delete[] color;
     delete[] d;
     free(result);

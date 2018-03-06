@@ -133,7 +133,7 @@ int heightField(const int total){
     return end;
 }
 
-void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels){
+void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels, int label_cost){
 
     // first set up the array for data costs
     int *data = (int*) malloc(sizeof(int)*num_pixels*num_labels);
@@ -159,7 +159,7 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels){
         GCoptimizationGeneralGraph *gc = new GCoptimizationGeneralGraph(num_pixels,num_labels);
         gc->setDataCost(data);
         gc->setSmoothCost(smooth);
-        gc->setLabelCost(0.5*10);
+        gc->setLabelCost(label_cost);
 
         int* mark = (int*) malloc(sizeof(int)*num_pixels);
         memset(mark,0,sizeof(int)*num_pixels);
@@ -225,8 +225,10 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels){
         gc->expansion(2);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
         printf("\nAfter optimization energy is %lld",gc->compute_energy());
 
-        for ( int  i = 0; i < num_pixels; i++ )
+        for ( int  i = 0; i < num_pixels; i++ ){
             result[i] = gc->whatLabel(i);
+            triFace[i].label = result[i];
+        }
 
         free(mark);
         delete gc;
@@ -239,7 +241,7 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels){
 
 }
 
-void getNeighborLabels(int dLabel[], face* f){
+void getNeighborLabels(int dLabel[], const face* f){
     int count = 0;
     edge* e = f -> adjacentEdge;
     edge* eRun = f ->adjacentEdge;
@@ -254,22 +256,23 @@ void getNeighborLabels(int dLabel[], face* f){
     } while(e != eRun);
 }
 
-void integrate(face** triFace, int* result, int faceNum) {
-    //    std::queue<face*> q;
-    //    q.push((*triFace));
+void integrate(){
+    
     for(int i = 0; i < faceNum; i++){
 
         int dLabel[3];
         memset(dLabel, -1, sizeof(int)*3);
 
-        getNeighborLabels(dLabel, &(*triFace)[i]);
+        getNeighborLabels(dLabel, &triFace[i]);
 
         int dl = compare(dLabel);
-        if(dl != -1 && dl != result[i] /*&& N_faces.row(i)*d[dl] >= 0*/){
-            //            std::cout<<"before result["<<i<<"] = "<<result[i]<<"\t";
+        if(dl != -1 && dl != result[i]){
             result[i] = dl;
-            (*triFace)[i].label = dl;
-            //            std::cout<<"after result["<<i<<"] = "<<result[i]<<"\n";
+            triFace[i].label = dl;
         }
     }
+}
+
+void merge(){
+    
 }

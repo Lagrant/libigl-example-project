@@ -46,9 +46,9 @@ bool interLock(edge* e, Eigen::Vector3d d);
 
 int heightField(const int total);
 
-void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels);
+void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels, int label_cost);
 
-void getNeighborLabels(int dLabel[], face* f);
+void getNeighborLabels(int dLabel[], const face* f);
 
 inline int compare(int dLabel[]){
     if(dLabel[1] == dLabel[2] || dLabel[1] == dLabel[0]){
@@ -58,5 +58,8 @@ inline int compare(int dLabel[]){
     else return -1;
 }
 
-void integrate(face** triFace, int* result, int faceNum);
+void integrate();
+
+void merge();
+
 #endif /* constraint_hpp */

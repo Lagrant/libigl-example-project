@@ -24,12 +24,13 @@ public:
     set(long total){
         this->number = 0;
         ntotal = total;
-        item = new T[total];
+        item = (T*) malloc(sizeof(T)*total);
         memset(this->item, -1, sizeof(T)*ntotal);
     }
-    /*~set(){
-        delete[] item;
-    }*/
+    ~set(){
+        free(item);
+        item = NULL;
+    }
     int isExist(const T item);
     bool addItem(const T item);
     bool removeItem(const T item);
