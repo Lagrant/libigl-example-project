@@ -16,86 +16,141 @@ int* result;
 vertex* ver;
 edge* e;
 face* triFace;
-connectedComponents* ccp;
+//connectedComponents* ccp;
 int NfaceRows;
 int faceNum;
+int total;
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-    int total, labelCost;
-    total = 600; labelCost = 0.5*10;
-    d = new Eigen::Vector3d[total];
-
-    for(int i = 0;i < total/2;i++){
-        d[i](0) = Guass();
-        d[i](1) = Guass();
-        d[i](2) = Guass();
-        d[i].normalize();
-        d[i+total/2] = -d[i];
-    }
-    
     // Load a mesh in OFF format
     igl::readOFF( "/Users/Lagrant/libigl/tutorial/shared/bunny.off", V, F);
+    
+    int labelCost, totalVer, htotal;
+    total       = 600;
+    labelCost   = 0.5*10;
+    if(total % 2)
+        total--;
+    htotal      = total/2;
     
     // Compute per-face normals
     igl::per_face_normals(V,F,N_faces);
     NfaceRows = N_faces.rows();
-    faceNum = F.rows();
+    faceNum   = F.rows();
+    totalVer  = faceNum*3;
     
-    // To apply the halfedge data structure
-    int totalVer = faceNum*3;
-    ver = (vertex*) malloc(sizeof(vertex)*totalVer);
-    e = (edge*) malloc(sizeof(edge)*totalVer);
-    triFace = (face*) malloc(sizeof(face)*faceNum);
-    ccp = (connectedComponents*) malloc(sizeof(connectedComponents)*faceNum*total);
+    Eigen::Vector3d M           = V.colwise().maxCoeff();
+    Eigen::RowVector3d* color   = new Eigen::RowVector3d[total];
+    Eigen::MatrixXd C(faceNum,3);
     
-    Eigen::RowVector3d* color = new Eigen::RowVector3d[total];
-    result = (int*) malloc(sizeof(int)*faceNum);
+    queue<int> tracked;
+    queue<int> untracked;
+    vector<int> directionTracking;
+    
+    ver          = (vertex*) malloc(sizeof(vertex)*totalVer);
+    e            = (edge*) malloc(sizeof(edge)*totalVer);
+    triFace      = (face*) malloc(sizeof(face)*faceNum);
+    //  ccp          = (connectedComponents*) malloc(sizeof(connectedComponents)*faceNum*total);
+    result       = (int*) malloc(sizeof(int)*faceNum);
+    int* mark    = (int*) malloc(sizeof(int)*faceNum);
+    int* un_mark = (int*) malloc(sizeof(int)*faceNum);
+    d            = new Eigen::Vector3d[total];
     memset(result, -1, sizeof(int)*faceNum);
+    memset(mark, 0 , sizeof(int)*faceNum);
+    memset(un_mark, 0 , sizeof(int)*faceNum);
     
-    //initialize the set class
-
-    void* rawMemory = operator new(NfaceRows*sizeof(set<int>));
-    
-    labels = reinterpret_cast<set<int>*>(rawMemory);
-    
-    for(int i = 0;i < faceNum;i++){
-//NfaceRows = faceNum, NfaceRows means the total numebr of norms of faces while faceNum means the total  number of faces
-        new (&labels[i])set<int>(total);
+    for(int i = 0;i < htotal;i++){
+        d[i](0) = Guass();
+        d[i](1) = Guass();
+        d[i](2) = Guass();
+        d[i].normalize();
+        d[i+htotal] = -d[i];
     }
-    printf("face number = %d\n", faceNum);
-
+    
     for(int i = 0;i < total;i++){
         color[i](0) = (double) rand() / RAND_MAX;
         color[i](1) = (double) rand() / RAND_MAX;
         color[i](2) = (double) rand() / RAND_MAX;
         color[i].normalize();
     }
-    Eigen::MatrixXd C(faceNum,3);
     
-    //compute the components class, the components are not connected yet
+    //initialize the set class
+    
+    void* rawMemory = operator new(NfaceRows*sizeof(set<int>));
+    labels = reinterpret_cast<set<int>*>(rawMemory);
+    for(int i = 0;i < faceNum;i++)                     //NfaceRows = faceNum, NfaceRows means the total numebr of norms of faces while faceNum means the total  number of faces
+        new (&labels[i])set<int>(total);
+    
+    printf("face number = %d\n", faceNum);
+    
+    
+    // To apply the halfedge data structure
     getHalfEdge(&ver, &e, &triFace);
     
     build(&ver, totalVer);
     
-    heightField(total);
+    // To compute the connected components
+    heightField();
     
-    GeneralGraph_DArraySArraySpatVarying(faceNum, total, labelCost);
+    GeneralGraph_DArraySArraySpatVarying(labelCost);
     
     
     integrate();
     
     integrate();
     
-//    integrate();
+    directionTracking.push_back(triFace[0].label);
+    tracked.push(0);
+    
+    do {
+        if(tracked.empty()){
+            while(mark[untracked.front()] && !untracked.empty())
+                untracked.pop();
+            if(untracked.empty())
+                break;
+            else {
+                tracked.push(untracked.front());
+                untracked.pop();
+            }
+        }
+        
+        int currentFaceLabel = tracked.front();
+        tracked.pop();
+        mark[currentFaceLabel] = 1;
+        
+        edge* currentEdge = triFace[currentFaceLabel].adjacentEdge;
+        edge* runEdge = currentEdge;
+        
+        do{
+            int label = runEdge->pair->face->label;
+            int numbering = runEdge->pair->face->numbering;
+            if(!mark[numbering]){
+                if(label == triFace[currentFaceLabel].label){
+                    tracked.push(runEdge->pair->face->numbering);
+                    mark[numbering] = 1;
+                    runEdge = runEdge->next;
+                } else if(!un_mark[numbering]){
+                    insert(directionTracking, label);
+                    untracked.push(runEdge->pair->face->numbering);
+                    un_mark[numbering] = 1;
+                    runEdge = runEdge->next;
+                }
+            }
+        } while(currentEdge != runEdge);
+        
+    } while(!tracked.empty() && !untracked.empty());
+    
+    int componentNumber = directionTracking.size();
+    
+    Eigen::MatrixXd VIndicator(componentNumber+1,3);
     
     
-    for(int i = 0 ;i < faceNum;i++){
-//        C.row(i) = color[labels[i].visitItem(0)];
+    //change color[reuslt[i]] here
+    
+    for(int i = 0 ;i < faceNum;i++)
         C.row(i) = color[result[i]];
-    }
     
     
     
@@ -109,10 +164,10 @@ int main(int argc, char *argv[])
     viewer.launch();
     
     for(int i = 0;i < faceNum;i++){
-
+        
         labels[i].~set();
     }
-
+    
     operator delete(rawMemory);
     delete[] color;
     delete[] d;
@@ -120,7 +175,7 @@ int main(int argc, char *argv[])
     free(ver);
     free(e);
     free(triFace);
-    free(ccp);
+    //    free(ccp);
     
     return 0;
 }

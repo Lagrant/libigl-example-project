@@ -77,7 +77,7 @@ int seekTheSameLabel(int label, int face){
 }
 
 
-int heightField(const int total){
+int heightField(){
     int NfaceRows = N_faces.rows(), end = 0;
     int *mark = (int*) malloc(sizeof(int)*NfaceRows);
 
@@ -89,8 +89,7 @@ int heightField(const int total){
                 continue;
             if(N_faces.row(i)*d[j] >= 0){
                 mark[i] = 1;
-                ccp[end].direction = d[j];
-                //                components[j].addItem(end);
+//                ccp[end].direction = d[j];
 
                 queue<face*> q;
                 face* f;
@@ -100,7 +99,7 @@ int heightField(const int total){
                 do{
                     f = q.front();
                     q.pop();
-                    ccp[end].conFaces.push_back(f->numbering);
+//                    ccp[end].conFaces.push_back(f->numbering);
                     labels[f->numbering].addItem(j);
 
                     e = f->adjacentEdge;
@@ -133,36 +132,36 @@ int heightField(const int total){
     return end;
 }
 
-void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels, int label_cost){
+void GeneralGraph_DArraySArraySpatVarying(int label_cost){
 
     // first set up the array for data costs
-    int *data = (int*) malloc(sizeof(int)*num_pixels*num_labels);
-    int *smooth = (int*) malloc(sizeof(int)*num_labels*num_labels);
+    int *data = (int*) malloc(sizeof(int)*faceNum*total);
+    int *smooth = (int*) malloc(sizeof(int)*total*total);
 
-    for ( int i = 0; i < num_pixels; i++ ){
-        for (int l = 0; l < num_labels; l++ ){
+    for ( int i = 0; i < faceNum; i++ ){
+        for (int l = 0; l < total; l++ ){
             if(labels[i].isExist(l) != -1){
-                data[i*num_labels+l] = 0;
+                data[i*total+l] = 0;
             }
-            else data[i*num_labels+l] = GCO_MAX_ENERGYTERM;
+            else data[i*total+l] = GCO_MAX_ENERGYTERM;
         }
     }
 
     // next set up the array for smooth costs
-    for ( int l1 = 0; l1 < num_labels; l1++ )
-        for (int l2 = 0; l2 < num_labels; l2++ ){
-            (l1 == l2)? smooth[l1+l2*num_labels] = 0: smooth[l1+l2*num_labels] = 1;
+    for ( int l1 = 0; l1 < total; l1++ )
+        for (int l2 = 0; l2 < total; l2++ ){
+            (l1 == l2)? smooth[l1+l2*total] = 0: smooth[l1+l2*total] = 1;
         }
 
 
     try{
-        GCoptimizationGeneralGraph *gc = new GCoptimizationGeneralGraph(num_pixels,num_labels);
+        GCoptimizationGeneralGraph *gc = new GCoptimizationGeneralGraph(faceNum,total);
         gc->setDataCost(data);
         gc->setSmoothCost(smooth);
         gc->setLabelCost(label_cost);
 
-        int* mark = (int*) malloc(sizeof(int)*num_pixels);
-        memset(mark,0,sizeof(int)*num_pixels);
+        int* mark = (int*) malloc(sizeof(int)*faceNum);
+        memset(mark,0,sizeof(int)*faceNum);
         face* f, *adjF;
         edge* e;
         queue<face*> q;
@@ -225,7 +224,7 @@ void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels, int lab
         gc->expansion(2);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
         printf("\nAfter optimization energy is %lld",gc->compute_energy());
 
-        for ( int  i = 0; i < num_pixels; i++ ){
+        for ( int  i = 0; i < faceNum; i++ ){
             result[i] = gc->whatLabel(i);
             triFace[i].label = result[i];
         }
@@ -275,4 +274,25 @@ void integrate(){
 
 void merge(){
     
+}
+
+int insert(vector<int>& vec, int k){
+    if(k < 0 || k > total){
+        std::cerr<<"invalid inserting label"<<endl;
+        return -1;
+    }
+        
+    int n = vec.size();
+    if(n >= vec.max_size()){
+        std::cerr<<"inserting operation overflow"<<endl;
+        return -1;
+    }
+    
+    for(int i = 0; i < n; i++){
+        if(vec.at(i) == k)
+            return 0;
+    }
+    
+    vec.push_back(k);
+    return 1;
 }

@@ -32,7 +32,9 @@ extern Eigen::Vector3d* d;
 extern set<int>* labels;
 extern int* result;
 extern face* triFace;
-extern connectedComponents* ccp;
+extern int total;
+extern int faceNum;
+//extern connectedComponents* ccp;
 
 double Guass();
 
@@ -44,9 +46,9 @@ int seekTheSameLabel(int label, int face);
 
 bool interLock(edge* e, Eigen::Vector3d d);
 
-int heightField(const int total);
+int heightField();
 
-void GeneralGraph_DArraySArraySpatVarying(int num_pixels,int num_labels, int label_cost);
+void GeneralGraph_DArraySArraySpatVarying(int label_cost);
 
 void getNeighborLabels(int dLabel[], const face* f);
 
@@ -61,5 +63,7 @@ inline int compare(int dLabel[]){
 void integrate();
 
 void merge();
+
+int insert(vector<int>& vec, int k);
 
 #endif /* constraint_hpp */
