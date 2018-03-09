@@ -2,6 +2,7 @@
 #include <igl/viewer/Viewer.h>
 #include <igl/per_face_normals.h>
 #include <iostream>
+#include <string>
 #include "constraint.hpp"
 #include "halfedge.h"
 
@@ -16,17 +17,65 @@ int* result;
 vertex* ver;
 edge* e;
 face* triFace;
-//connectedComponents* ccp;
 int NfaceRows;
 int faceNum;
 int total;
 
+enum class suffixs{
+    OFF,
+    OBJ
+};
+
+static std::map<std::string, suffixs> s_mapStringValues =
+{
+    {"off",suffixs::OFF},
+    {"obj",suffixs::OBJ},
+    {"OFF",suffixs::OFF},
+    {"OBJ",suffixs::OBJ}
+};
+
 using namespace std;
+
+void loadFile(Eigen::MatrixXd& V, Eigen::MatrixXi& F, string filename, string path = "/Users/Lagrant/libigl/tutorial/shared/"){
+    string suffix = "";
+    int dot = 0;
+    while (dot < filename.size()) {
+        if(filename[dot] == '.'){
+            if(dot == filename.size()-1){
+                cerr<<"incorrect file name";
+                exit(-1);
+            }
+            while(dot < filename.size()-1){
+                dot++;
+                suffix += filename[dot];
+            }
+            break;
+        } else dot++;
+    }
+    
+    switch(s_mapStringValues[suffix])
+    {
+        case suffixs::OFF:
+            igl::readOFF(path+filename,V,F);
+            break;
+        case suffixs::OBJ:
+            igl::readOBJ(path+filename,V,F);
+            break;
+        default:
+            cerr<<"invalid file name";
+            exit(-1);
+    }
+}
 
 int main(int argc, char *argv[])
 {
+    string path = "/Users/Lagrant/libigl/tutorial/shared/";
+    string filename = "";
+    cin>>filename;
+    
     // Load a mesh in OFF format
-    igl::readOFF( "/Users/Lagrant/libigl/tutorial/shared/bunny.off", V, F);
+    loadFile(V, F, filename);
+//    igl::readOFF("/Users/Lagrant/libigl/tutorial/shared/bunny.off",V,F);
     
     int labelCost, totalVer, htotal;
     total       = 600;
@@ -41,10 +90,10 @@ int main(int argc, char *argv[])
     faceNum   = F.rows();
     totalVer  = faceNum*3;
     
-    Eigen::Vector3d M           = V.colwise().maxCoeff();
+    Eigen::RowVector3d M        = V.colwise().maxCoeff().transpose();
     Eigen::RowVector3d* color   = new Eigen::RowVector3d[total];
     Eigen::MatrixXd C(faceNum,3);
-    
+    igl::viewer::Viewer viewer;
     queue<int> tracked;
     queue<int> untracked;
     vector<int> directionTracking;
@@ -52,7 +101,6 @@ int main(int argc, char *argv[])
     ver          = (vertex*) malloc(sizeof(vertex)*totalVer);
     e            = (edge*) malloc(sizeof(edge)*totalVer);
     triFace      = (face*) malloc(sizeof(face)*faceNum);
-    //  ccp          = (connectedComponents*) malloc(sizeof(connectedComponents)*faceNum*total);
     result       = (int*) malloc(sizeof(int)*faceNum);
     int* mark    = (int*) malloc(sizeof(int)*faceNum);
     int* un_mark = (int*) malloc(sizeof(int)*faceNum);
@@ -73,14 +121,13 @@ int main(int argc, char *argv[])
         color[i](0) = (double) rand() / RAND_MAX;
         color[i](1) = (double) rand() / RAND_MAX;
         color[i](2) = (double) rand() / RAND_MAX;
-        color[i].normalize();
     }
     
     //initialize the set class
     
     void* rawMemory = operator new(NfaceRows*sizeof(set<int>));
     labels = reinterpret_cast<set<int>*>(rawMemory);
-    for(int i = 0;i < faceNum;i++)                     //NfaceRows = faceNum, NfaceRows means the total numebr of norms of faces while faceNum means the total  number of faces
+    for(int i = 0;i < faceNum;i++)
         new (&labels[i])set<int>(total);
     
     printf("face number = %d\n", faceNum);
@@ -96,17 +143,17 @@ int main(int argc, char *argv[])
     
     GeneralGraph_DArraySArraySpatVarying(labelCost);
     
-    
     integrate();
     
     integrate();
     
-    directionTracking.push_back(triFace[0].label);
+//    directionTracking.push_back(triFace[0].label);
+    append(viewer, directionTracking, triFace[0].label, M, color[triFace[0].label]);
     tracked.push(0);
-    
+    int preLabel = -1;
     do {
         if(tracked.empty()){
-            while(mark[untracked.front()] && !untracked.empty())
+            while(!untracked.empty() && mark[untracked.front()])
                 untracked.pop();
             if(untracked.empty())
                 break;
@@ -116,57 +163,113 @@ int main(int argc, char *argv[])
             }
         }
         
-        int currentFaceLabel = tracked.front();
+        int currentFaceNumber = tracked.front();
         tracked.pop();
-        mark[currentFaceLabel] = 1;
         
-        edge* currentEdge = triFace[currentFaceLabel].adjacentEdge;
+        int currentFaceLabel  = triFace[currentFaceNumber].label;
+        mark[currentFaceNumber] = 1;
+        
+        if(preLabel != currentFaceLabel){
+            preLabel = currentFaceLabel;
+            //change color[reuslt[i]] here
+//            color[currentFaceLabel](0) *= 0.9;
+//            color[currentFaceLabel](1) = (double)rand()/RAND_MAX;
+//            color[currentFaceLabel](2) *= 0.7;
+            color[currentFaceLabel].row(0) *= 0.7;
+        }
+        C.row(currentFaceNumber) = color[currentFaceLabel];
+        
+        edge* currentEdge = triFace[currentFaceNumber].adjacentEdge;
         edge* runEdge = currentEdge;
         
         do{
             int label = runEdge->pair->face->label;
             int numbering = runEdge->pair->face->numbering;
+            
             if(!mark[numbering]){
-                if(label == triFace[currentFaceLabel].label){
-                    tracked.push(runEdge->pair->face->numbering);
+                if(label == currentFaceLabel){
+                    C.row(numbering) = color[label];
+                    tracked.push(numbering);
                     mark[numbering] = 1;
                     runEdge = runEdge->next;
+                    
                 } else if(!un_mark[numbering]){
-                    insert(directionTracking, label);
-                    untracked.push(runEdge->pair->face->numbering);
+                    append(viewer, directionTracking, label, M, color[label]);
+                    untracked.push(numbering);
                     un_mark[numbering] = 1;
                     runEdge = runEdge->next;
-                }
-            }
+                    
+                } else runEdge = runEdge->next;
+                
+            } else runEdge = runEdge->next;
         } while(currentEdge != runEdge);
         
-    } while(!tracked.empty() && !untracked.empty());
-    
-    int componentNumber = directionTracking.size();
-    
-    Eigen::MatrixXd VIndicator(componentNumber+1,3);
+    } while(!tracked.empty() || !untracked.empty());
     
     
-    //change color[reuslt[i]] here
-    
-    for(int i = 0 ;i < faceNum;i++)
-        C.row(i) = color[result[i]];
     
     
+//    for(int i = 0 ;i < faceNum;i++)
+//        C.row(i) = color[result[i]];
     
     // Plot the mesh
-    igl::viewer::Viewer viewer;
     viewer.core.show_lines = false;
     viewer.data.set_mesh(V, F);
     viewer.data.set_normals(N_faces);
     viewer.data.set_colors(C);
+//    viewer.data.add_points(M,Eigen::RowVector3d(0,0,0));
+    
+//    int componentNumber = directionTracking.size();
+//    for(int i = 0; i < componentNumber; i++){
+//        viewer.data.add_edges
+//        (
+//         M,
+//         d[directionTracking.at(i)].transpose() + M,
+//         color[directionTracking.at(i)]*0.7
+//         );
+//    }
+    
+    viewer.data.add_edges
+    (
+     M,
+     Eigen::RowVector3d(M(0)+1, M(1), M(2)),
+     Eigen::RowVector3d(0,0,0)
+     );
+    viewer.data.add_edges
+    (
+     M,
+     Eigen::RowVector3d(M(0), M(1)+1, M(2)),
+     Eigen::RowVector3d(0,0,0)
+     );
+    viewer.data.add_edges
+    (
+     M,
+     Eigen::RowVector3d(M(0), M(1), M(2)+1),
+     Eigen::RowVector3d(0,0,0)
+     );
+    viewer.data.add_edges
+    (
+     M,
+     Eigen::RowVector3d(M(0)-1, M(1), M(2)),
+     Eigen::RowVector3d(0,0,0)
+     );
+    viewer.data.add_edges
+    (
+     M,
+     Eigen::RowVector3d(M(0), M(1)-1, M(2)),
+     Eigen::RowVector3d(0,0,0)
+     );
+    viewer.data.add_edges
+    (
+     M,
+     Eigen::RowVector3d(M(0), M(1), M(2)-1),
+     Eigen::RowVector3d(0,0,0)
+     );
     
     viewer.launch();
     
-    for(int i = 0;i < faceNum;i++){
-        
+    for(int i = 0;i < faceNum;i++)
         labels[i].~set();
-    }
     
     operator delete(rawMemory);
     delete[] color;
@@ -175,7 +278,8 @@ int main(int argc, char *argv[])
     free(ver);
     free(e);
     free(triFace);
-    //    free(ccp);
+    free(mark);
+    free(un_mark);
     
     return 0;
 }

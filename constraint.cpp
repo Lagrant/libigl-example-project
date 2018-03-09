@@ -76,6 +76,14 @@ int seekTheSameLabel(int label, int face){
     return 0;
 }
 
+//bool interLock(edge* e, Eigen::Vector3d d){
+//    int numbering = e->face->numbering;
+//    Eigen::Matrix<double,3,1> v = e->endVertex->vert - e->pair->endVertex->vert;
+//    Eigen::Matrix<double,1,3> nt = N_faces.row(numbering);
+//    nt = nt.cross(v.transpose());
+//    nt.normalize();
+//    return (nt*d >= 0) ? true : false;
+//}
 
 int heightField(){
     int NfaceRows = N_faces.rows(), end = 0;
@@ -276,7 +284,7 @@ void merge(){
     
 }
 
-int insert(vector<int>& vec, int k){
+int append(igl::viewer::Viewer& viewer, vector<int>& vec, int k, Eigen::RowVector3d M, Eigen::RowVector3d color){
     if(k < 0 || k > total){
         std::cerr<<"invalid inserting label"<<endl;
         return -1;
@@ -294,5 +302,11 @@ int insert(vector<int>& vec, int k){
     }
     
     vec.push_back(k);
+    viewer.data.add_edges
+    (
+     M,
+     d[k].transpose() + M,
+     /*color[directionTracking.at(i)]*0.7*/color
+     );
     return 1;
 }

@@ -15,6 +15,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <queue>
+#include <igl/viewer/Viewer.h>
 #include "GCoptimization.h"
 #include "halfedge.h"
 
@@ -34,7 +35,6 @@ extern int* result;
 extern face* triFace;
 extern int total;
 extern int faceNum;
-//extern connectedComponents* ccp;
 
 double Guass();
 
@@ -64,6 +64,6 @@ void integrate();
 
 void merge();
 
-int insert(vector<int>& vec, int k);
+int append(igl::viewer::Viewer& viewer, vector<int>& vec, int k, Eigen::RowVector3d M, Eigen::RowVector3d color);
 
 #endif /* constraint_hpp */
