@@ -1,38 +1,24 @@
-# libigl example project
+# Fold Molding
 
-A blank project example showing how to use libigl and cmake. Feel free and
-encouraged to copy or fork this project as a way of starting a new personal
-project using libigl.
+This project is to design decomposition algorithm for free form geometry with the constraint of height field.
 
-## See the tutorial first
 
-Then build, run and understand the [libigl
-tutorial](http://libigl.github.io/libigl/tutorial/tutorial.html).
+## Height Field
+Height field is the constraint that decomposes the target object into several parts. Every part should be seperated in one direction without conflict.
 
-## Compile
 
-Compile this project using the standard cmake routine:
+## Algorithm
 
-    mkdir build
-    cd build
-    cmake ..
-    make
+This algorithm aims to detect height field, avoid overlaping and inter-locking. It maps an object modeled by triangle mesh into a graph. Every triangle is mapped to a vertex in the graph. Edges are connected to the vetices whose corresponding triangles are adjacent. We assign weight to every edge according to the length of its corresponding triangle edge. Alpha expansion algorithm is applied to achieve the graph cut problem. We then adjust the segmentations by the graph cut results
 
-This should find and build the dependencies and create a `example_bin` binary.
 
 ## Run
 
-From within the `build` directory just issue:
+This project depends on libigl. You should install libigl first, and then run the codd
 
-    ./example_bin
-
-A glfw app should launch displaying a 3D cube.
+    This project reads .obj or .off files only.
 
 ## Dependencies
-
-The only dependencies are stl, eigen, [libigl](libigl.github.io/libigl/) and
-the dependencies of the `igl::viewer::Viewer` (mandatory: glfw and
-opengl, optional: nanogui and nanovg).
 
 We recommend you to install libigl using git via:
 
